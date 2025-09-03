@@ -102,17 +102,28 @@ public class MainUI extends Application {
         btnVoltar.setOnAction(e -> showMenu());
 
         btnSalvar.setOnAction(e -> {
-            String descricao = descricaoField.getText();
-            String categoria = categoriaBox.getValue();
-            double valor = Double.parseDouble(valorField.getText());
+            try {
+                String descricao = descricaoField.getText();
+                String categoria = categoriaBox.getValue();
+                double valor = Double.parseDouble(valorField.getText());
 
-            CategoriaDAO.salvarCategoria(categoria);
-            Integer catId = CategoriaDAO.getCategoriaId(categoria);
+                if (descricao.isEmpty() || categoria == null || valor <= 0) {
+                    System.out.println("⚠ Preencha todos os campos corretamente.");
+                    return;
+                }
 
-            if (catId != null) {
-                TransacaoDAO.salvarTransacao(descricao, catId, valor, "despesa");
-                showMenu();
+                CategoriaDAO.salvarCategoria(categoria);
+                Integer catId = CategoriaDAO.getCategoriaId(categoria);
+
+                if (catId != null) {
+                    TransacaoDAO.salvarTransacao(descricao, catId, valor, "despesa");
+                    System.out.println("✅ Despesa registrada com sucesso!");
+                    showTransacoes(); // volta para a lista atualizada
+                }
+            }catch (Exception ex) {
+                System.out.println("⚠ Erro ao salvar despesa: " + ex.getMessage());
             }
+
         });
 
         VBox layout = new VBox(15, titulo, descricaoField, valorField, categoriaBox, btnSalvar, btnVoltar);
@@ -248,15 +259,21 @@ public class MainUI extends Application {
         titulo.setFont(Font.font("Arial", 24));
         titulo.setFill(Color.WHITE);
 
+        // consulta categorias e soma valores
+        Map<String, Double> dados = TransacaoDAO.somarPorCategoria("despesa");
+
         PieChart grafico = new PieChart();
-        grafico.setData(FXCollections.observableArrayList(
-                new PieChart.Data("Alimentação", 450),
-                new PieChart.Data("Transporte", 80),
-                new PieChart.Data("Entretenimento", 40),
-                new PieChart.Data("Saúde", 120)
-        ));
+        for (var entry : dados.entrySet()) {
+            String categoria = entry.getKey();
+            double valor = entry.getValue();
+            grafico.getData().add(new PieChart.Data(categoria + " - R$ " + valor, valor));
+        }
+
         grafico.setLegendVisible(true);
         grafico.setLabelsVisible(true);
+
+        // Ajustar visibilidade das labels
+        grafico.setStyle("-fx-pie-label-visible: true; -fx-font-size: 16px; -fx-text-fill: white;");
 
         Button btnVoltar = new Button("⬅ Voltar ao Menu");
         estilizarBotao(btnVoltar);
